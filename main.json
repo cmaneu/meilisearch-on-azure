@@ -1,0 +1,430 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.4.1008.15138",
+      "templateHash": "10917011123198660964"
+    }
+  },
+  "parameters": {
+    "environment": {
+      "type": "string",
+      "defaultValue": "dev",
+      "metadata": {
+        "description": "The name of environment (dev, prod, ...)"
+      }
+    },
+    "applicationName": {
+      "type": "string",
+      "defaultValue": "meilisearch",
+      "metadata": {
+        "description": "The name of your search service. This value should be unique"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "eastus",
+      "metadata": {
+        "description": "The Azure region code."
+      }
+    },
+    "meilisearch_apikey": {
+      "type": "secureString",
+      "defaultValue": "[newGuid()]",
+      "metadata": {
+        "description": "The API Key used to connect to your Meilisearch instance."
+      }
+    }
+  },
+  "functions": [],
+  "variables": {
+    "instanceNumber": "001",
+    "shareName": "meilisearch",
+    "defaultTags": {
+      "environment": "[parameters('environment')]",
+      "application": "[parameters('applicationName')]"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/resourceGroups",
+      "apiVersion": "2021-04-01",
+      "name": "[format('rg-{0}-{1}', parameters('applicationName'), variables('instanceNumber'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('defaultTags')]"
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-06-01",
+      "name": "storage",
+      "resourceGroup": "[format('rg-{0}-{1}', parameters('applicationName'), variables('instanceNumber'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "applicationName": {
+            "value": "[parameters('applicationName')]"
+          },
+          "environment": {
+            "value": "[parameters('environment')]"
+          },
+          "resourceTags": {
+            "value": "[variables('defaultTags')]"
+          },
+          "instanceNumber": {
+            "value": "[variables('instanceNumber')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.4.1008.15138",
+              "templateHash": "14041418290185408180"
+            }
+          },
+          "parameters": {
+            "applicationName": {
+              "type": "string",
+              "metadata": {
+                "description": "The name of your application"
+              }
+            },
+            "environment": {
+              "type": "string",
+              "defaultValue": "dev",
+              "maxLength": 4,
+              "metadata": {
+                "description": "The environment (dev, test, prod, ..."
+              }
+            },
+            "instanceNumber": {
+              "type": "string",
+              "defaultValue": "001",
+              "maxLength": 3,
+              "metadata": {
+                "description": "The number of this specific instance"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "The Azure region where all resources in this example should be created"
+              }
+            },
+            "resourceTags": {
+              "type": "object",
+              "metadata": {
+                "description": "A list of tags to apply to the resources"
+              }
+            },
+            "containerName": {
+              "type": "string",
+              "defaultValue": "[parameters('applicationName')]",
+              "metadata": {
+                "description": "The name of the container to create. Defaults to applicationName value."
+              }
+            }
+          },
+          "functions": [],
+          "variables": {
+            "storageName": "[format('st{0}{1}{2}', take(parameters('applicationName'), 14), parameters('environment'), parameters('instanceNumber'))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2021-04-01",
+              "name": "[variables('storageName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('resourceTags')]",
+              "kind": "StorageV2",
+              "sku": {
+                "name": "Standard_LRS"
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "2021-04-01",
+              "name": "[format('{0}/default/{1}', variables('storageName'), parameters('containerName'))]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "storageAccountName": {
+              "type": "string",
+              "value": "[variables('storageName')]"
+            },
+            "id": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]"
+            },
+            "apiVersion": {
+              "type": "string",
+              "value": "2021-04-01"
+            },
+            "storageKey": {
+              "type": "string",
+              "value": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageName')), '2021-04-01').keys[0].value]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', format('rg-{0}-{1}', parameters('applicationName'), variables('instanceNumber')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-06-01",
+      "name": "fileShare",
+      "resourceGroup": "[format('rg-{0}-{1}', parameters('applicationName'), variables('instanceNumber'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "parentStorageAccountName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-{0}-{1}', parameters('applicationName'), variables('instanceNumber'))), 'Microsoft.Resources/deployments', 'storage'), '2020-06-01').outputs.storageAccountName.value]"
+          },
+          "shareName": {
+            "value": "[variables('shareName')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.4.1008.15138",
+              "templateHash": "17981339701894463428"
+            }
+          },
+          "parameters": {
+            "parentStorageAccountName": {
+              "type": "string"
+            },
+            "shareName": {
+              "type": "string"
+            }
+          },
+          "functions": [],
+          "resources": [
+            {
+              "type": "Microsoft.Storage/storageAccounts/fileServices/shares",
+              "apiVersion": "2021-06-01",
+              "name": "[format('{0}/default/{1}', parameters('parentStorageAccountName'), parameters('shareName'))]",
+              "properties": {
+                "accessTier": "TransactionOptimized",
+                "shareQuota": 5120,
+                "enabledProtocols": "SMB"
+              }
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', format('rg-{0}-{1}', parameters('applicationName'), variables('instanceNumber')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-{0}-{1}', parameters('applicationName'), variables('instanceNumber'))), 'Microsoft.Resources/deployments', 'storage')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-06-01",
+      "name": "webApp",
+      "resourceGroup": "[format('rg-{0}-{1}', parameters('applicationName'), variables('instanceNumber'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "applicationName": {
+            "value": "[parameters('applicationName')]"
+          },
+          "environment": {
+            "value": "[parameters('environment')]"
+          },
+          "resourceTags": {
+            "value": "[variables('defaultTags')]"
+          },
+          "instanceNumber": {
+            "value": "[variables('instanceNumber')]"
+          },
+          "shareName": {
+            "value": "[variables('shareName')]"
+          },
+          "shareStorageName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-{0}-{1}', parameters('applicationName'), variables('instanceNumber'))), 'Microsoft.Resources/deployments', 'storage'), '2020-06-01').outputs.storageAccountName.value]"
+          },
+          "shareMountPath": {
+            "value": "/data/meili"
+          },
+          "environmentVariables": {
+            "value": [
+              {
+                "name": "MEILI_MASTER_KEY",
+                "value": "[parameters('meilisearch_apikey')]"
+              },
+              {
+                "name": "MEILI_DB_PATH",
+                "value": "/data/meili"
+              }
+            ]
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.4.1008.15138",
+              "templateHash": "14818078133192146331"
+            }
+          },
+          "parameters": {
+            "applicationName": {
+              "type": "string",
+              "metadata": {
+                "description": "The name of your application"
+              }
+            },
+            "environment": {
+              "type": "string",
+              "defaultValue": "dev",
+              "maxLength": 4,
+              "metadata": {
+                "description": "The environment (dev, test, prod, ..."
+              }
+            },
+            "instanceNumber": {
+              "type": "string",
+              "defaultValue": "001",
+              "maxLength": 3,
+              "metadata": {
+                "description": "The number of this specific instance"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "The Azure region where all resources in this example should be created"
+              }
+            },
+            "environmentVariables": {
+              "type": "array",
+              "metadata": {
+                "description": "An array of NameValues that needs to be added as environment variables"
+              }
+            },
+            "resourceTags": {
+              "type": "object",
+              "metadata": {
+                "description": "A list of tags to apply to the resources"
+              }
+            },
+            "shareStorageName": {
+              "type": "string"
+            },
+            "shareName": {
+              "type": "string"
+            },
+            "shareMountPath": {
+              "type": "string"
+            }
+          },
+          "functions": [],
+          "variables": {
+            "appServicePlanName": "[format('plan-{0}-{1}', parameters('applicationName'), parameters('instanceNumber'))]",
+            "meilisearchImageName": "getmeili/meilisearch:latest"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Web/serverfarms",
+              "apiVersion": "2020-12-01",
+              "name": "[variables('appServicePlanName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('resourceTags')]",
+              "kind": "linux",
+              "properties": {
+                "reserved": true
+              },
+              "sku": {
+                "tier": "Standard",
+                "name": "S1"
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites",
+              "apiVersion": "2020-12-01",
+              "name": "[format('app-{0}-{1}-{2}', parameters('applicationName'), parameters('environment'), parameters('instanceNumber'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('resourceTags')]",
+              "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]",
+                "httpsOnly": true,
+                "clientAffinityEnabled": false,
+                "siteConfig": {
+                  "azureStorageAccounts": {},
+                  "linuxFxVersion": "[format('DOCKER|{0}', variables('meilisearchImageName'))]",
+                  "alwaysOn": false,
+                  "ftpsState": "FtpsOnly",
+                  "http20Enabled": true,
+                  "minTlsVersion": "1.2",
+                  "appSettings": "[union(parameters('environmentVariables'), createArray(createObject('name', 'WEBSITES_ENABLE_APP_SERVICE_STORAGE', 'value', false()), createObject('name', 'DOCKER_REGISTRY_SERVER_URL', 'value', 'https://index.docker.io'), createObject('name', 'DOCKER_REGISTRY_SERVER_USERNAME', 'value', ''), createObject('name', 'DOCKER_REGISTRY_SERVER_PASSWORD', 'value', ''), createObject('name', 'WEBSITES_PORT', 'value', '7700')))]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]"
+              ]
+            },
+            {
+              "condition": "[not(empty(parameters('shareName')))]",
+              "type": "Microsoft.Web/sites/config",
+              "apiVersion": "2021-01-15",
+              "name": "[format('{0}/azurestorageaccounts', format('app-{0}-{1}-{2}', parameters('applicationName'), parameters('environment'), parameters('instanceNumber')))]",
+              "properties": {
+                "meilidb": {
+                  "type": "AzureFiles",
+                  "shareName": "[parameters('shareName')]",
+                  "mountPath": "[parameters('shareMountPath')]",
+                  "accountName": "[parameters('shareStorageName')]",
+                  "accessKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('shareStorageName')), '2019-06-01').keys[0].value]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', format('app-{0}-{1}-{2}', parameters('applicationName'), parameters('environment'), parameters('instanceNumber')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "application_hostname": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Web/sites', format('app-{0}-{1}-{2}', parameters('applicationName'), parameters('environment'), parameters('instanceNumber')))).hostNames[0]]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', format('rg-{0}-{1}', parameters('applicationName'), variables('instanceNumber')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-{0}-{1}', parameters('applicationName'), variables('instanceNumber'))), 'Microsoft.Resources/deployments', 'storage')]"
+      ]
+    }
+  ]
+}

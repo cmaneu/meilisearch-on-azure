@@ -10,7 +10,7 @@ resource storageShare 'Microsoft.Storage/storageAccounts/fileServices/shares@202
   name: '${storageAccount.name}/default/${shareName}'
   properties: {
     accessTier: 'TransactionOptimized'
-    shareQuota: 5120
+    shareQuota: 110
     enabledProtocols: 'SMB'
   }
 }

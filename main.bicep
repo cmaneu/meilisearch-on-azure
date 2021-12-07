@@ -10,7 +10,6 @@ param location string = 'eastus'
 @description('The API Key used to connect to your Meilisearch instance.')
 param meilisearch_apikey string = newGuid()
 
-
 var instanceNumber = '001'
 var shareName = 'meilisearch'
 

@@ -70,3 +70,6 @@ module webApp 'modules/app-service/app-service.bicep' = {
     ]
   }
 }
+
+output MeilisearchApiUrl string = webApp.outputs.application_hostname
+output MeilisearchResourceGroup string = rg.name

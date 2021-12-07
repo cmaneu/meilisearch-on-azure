@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.4.1008.15138",
-      "templateHash": "10917011123198660964"
+      "templateHash": "5156194253000431028"
     }
   },
   "parameters": {
@@ -426,5 +426,15 @@
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-{0}-{1}', parameters('applicationName'), variables('instanceNumber'))), 'Microsoft.Resources/deployments', 'storage')]"
       ]
     }
-  ]
+  ],
+  "outputs": {
+    "MeilisearchApiUrl": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-{0}-{1}', parameters('applicationName'), variables('instanceNumber'))), 'Microsoft.Resources/deployments', 'webApp'), '2020-06-01').outputs.application_hostname.value]"
+    },
+    "MeilisearchResourceGroup": {
+      "type": "string",
+      "value": "[format('rg-{0}-{1}', parameters('applicationName'), variables('instanceNumber'))]"
+    }
+  }
 }
